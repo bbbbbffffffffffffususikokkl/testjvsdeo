@@ -1,0 +1,10 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "js-deobfuscator",
+  "main": "src/index.js", 
+  "compatibility_date": "2026-02-18",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS"        
+  }
+}
