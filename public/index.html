@@ -1,21 +1,24 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>JS Deobfuscator</title>
+</head>
 <body>
-  <h1>JS Deobfuscator</h1>
-  <textarea id="input" placeholder="Paste obfuscated code here..."></textarea>
-  <button onclick="deobfuscate()">Deobfuscate</button>
-  <pre id="output"></pre>
+    <textarea id="input" rows="10" cols="50"></textarea>
+    <button id="run">Clean Code</button>
+    <pre id="output"></pre>
 
-  <script>
-    async function deobfuscate() {
-      const code = document.getElementById('input').value;
-      const response = await fetch('/api/deobfuscate', {
-        method: 'POST',
-        body: JSON.stringify({ code })
-      });
-      const data = await response.json();
-      document.getElementById('output').innerText = data.result;
-    }
-  </script>
+    <script>
+        document.getElementById('run').onclick = async () => {
+            const code = document.getElementById('input').value;
+            const res = await fetch('/process', {
+                method: 'POST',
+                body: JSON.stringify({ code })
+            });
+            const data = await res.json();
+            document.getElementById('output').innerText = data.result;
+        };
+    </script>
 </body>
 </html>
