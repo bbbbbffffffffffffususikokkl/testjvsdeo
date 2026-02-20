@@ -5,6 +5,7 @@ import { removeJunk } from './utils/junkremover.js';
 import { beautify } from './utils/formatter.js';
 import { addWatermark } from './utils/watermark.js';
 import { simplifyMath } from './utils/mathsimplifier.js';
+import { refineDecals } from './utils/refinedecals.js';
 
 export function deobfuscate(code, startTime) {
     let output = code;
@@ -28,6 +29,7 @@ export function deobfuscate(code, startTime) {
 
         // 6. Aggressive Junk Removal (Delete unused var/functions)
         output = removeJunk(output);
+        output = refineDecals(output);
 
         // 7. Formatting (Final visual polish)
         output = beautify(output);
