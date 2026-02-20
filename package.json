@@ -1,11 +1,26 @@
 {
-  "name": "js-deobfuscator",
+  "name": "obfuscator-io-deobfuscator-worker",
   "version": "1.0.0",
-  "devDependencies": {
-    "wrangler": "^3.0.0"
-  },
+  "description": "Cloudflare Worker that deobfuscates JavaScript obfuscated by obfuscator.io",
+  "private": true,
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy",
+    "build": "tsc --noEmit",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@babel/generator": "^7.23.0",
+    "@babel/parser": "^7.23.0",
+    "@babel/traverse": "^7.23.0",
+    "@babel/types": "^7.23.0",
+    "@codemod/matchers": "^1.3.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20231218.0",
+    "@types/babel__generator": "^7.6.8",
+    "@types/babel__traverse": "^7.20.5",
+    "typescript": "^5.3.3",
+    "wrangler": "^3.22.0"
   }
 }
