@@ -4,29 +4,16 @@ import { renameVariables } from './utils/renamer.js';
 import { removeJunk } from './utils/junkremover.js';
 import { beautify } from './utils/formatter.js';
 import { addWatermark } from './utils/watermark.js';
+import { simplifyMath } from './utils/mathsimplifier.js';
 
 export function deobfuscate(code, startTime) {
     let output = code;
-
-    try {
-        output = decodeHex(output);
-        output = unpackStrings(output);
-        
-        // This is where the magic happens:
-        // Turns _0x55d1 -> world, _0x8821 -> player, etc.
-        output = renameVariables(output); 
-
-        output = removeJunk(output);
-        
-        // Member Expression Fixer (Clean up those brackets)
-        output = output.replace(/\[['"]([^'"]+)['"]\]/g, '.$1'); 
-
-        output = beautify(output);
-        output = addWatermark(output, startTime);
-
-    } catch (e) {
-        output = `// Deobfuscation Error: ${e.message}\n` + output;
-    }
-
-    return output;
+    
+    output = decodeHex(output);
+    output = simplifyMath(output); 
+    output = unpackStrings(output);
+    output = output.replace(/\[['"]([^'"]+)['"]\]/g, '.$1');
+    output = removeJunk(output); 
+    
+    return addWatermark(output, startTime);
 }
