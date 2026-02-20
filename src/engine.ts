@@ -4,6 +4,7 @@
  * Public API for the deobfuscator.
  * Parses the source into a Babel AST, runs all enabled transformations,
  * and returns the regenerated source code.
+ fr bigg
  */
 
 import { parse } from '@babel/parser';
