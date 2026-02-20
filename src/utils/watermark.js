@@ -1,0 +1,12 @@
+export const addWatermark = (code, startTime) => {
+    const endTime = Date.now();
+    const timeTaken = endTime - startTime;
+    
+    const watermark = `/**\n` +
+                      ` * Time Taken: ${timeTaken}ms\n` +
+                      ` * Deobfuscated by Vex\n` +
+                      ` * Discord: discord.gg/vex\n` +
+                      ` **/\n\n`;
+                      
+    return watermark + code;
+};
