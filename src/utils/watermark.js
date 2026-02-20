@@ -6,7 +6,7 @@ export const addWatermark = (code, startTime) => {
                       ` * Time Taken: ${timeTaken}ms\n` +
                       ` * Deobfuscated by Vex\n` +
                       ` * Discord: discord.gg/vex\n` +
-                      ` **/\n\n`;
+                      ` **/\n`;
                       
     return watermark + code;
 };
