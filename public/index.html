@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vex-Deobf</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root[data-theme="light"] {
+            --bg: #ffffff;
+            --panel: #f8f9fa;
+            --text: #1a1a1a;
+            --border: #dee2e6;
+            --accent: #6200ee;
+            --header: #ffffff;
+        }
+        :root[data-theme="dark"] {
+            --bg: #0b0e14;
+            --panel: #161b22;
+            --text: #c9d1d9;
+            --border: #30363d;
+            --accent: #79c0ff;
+            --header: #0d1117;
+        }
+
+        * { box-sizing: border-box; transition: background 0.2s, color 0.2s; }
+
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        header {
+            padding: 0.8rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--header);
+            border-bottom: 1px solid var(--border);
+            z-index: 10;
+        }
+
+        .brand h1 { margin: 0; font-size: 1.2rem; font-weight: 800; letter-spacing: 1px; color: var(--accent); }
+        .brand a { color: #8b949e; text-decoration: none; font-size: 0.75rem; }
+
+        .nav-actions { display: flex; gap: 10px; align-items: center; }
+
+        .main-layout {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        @media (min-width: 768px) {
+            .main-layout { flex-direction: row; }
+        }
+
+        .editor-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid var(--border);
+            background: var(--bg);
+            min-height: 300px;
+            overflow: hidden;
+        }
+
+        .toolbar {
+            padding: 8px 12px;
+            background: var(--panel);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .editor-wrapper {
+            display: flex;
+            flex: 1;
+            overflow: auto;
+            position: relative;
+        }
+
+        .line-numbers {
+            padding: 10px 8px;
+            background: var(--panel);
+            border-right: 1px solid var(--border);
+            color: #484f58;
+            text-align: right;
+            font-family: monospace;
+            font-size: 13px;
+            user-select: none;
+            min-width: 35px;
+        }
+
+        textarea, #output-pre {
+            flex: 1;
+            padding: 10px;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            border: none;
+            outline: none;
+            background: transparent;
+            color: inherit;
+            resize: none;
+            white-space: pre;
+            tab-size: 4;
+        }
+
+        #output-pre { margin: 0; overflow: auto; }
+
+        .btn-icon {
+            background: none;
+            border: none;
+            color: var(--text);
+            cursor: pointer;
+            font-size: 1.1rem;
+            padding: 8px;
+            border-radius: 6px;
+        }
+
+        .btn-icon:hover { background: var(--border); }
+
+        .action-btn {
+            background: var(--accent);
+            color: #000;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+
+        /* Mobile specific adjustments */
+        @media (max-width: 767px) {
+            header { padding: 0.5rem 1rem; }
+            .editor-container { min-height: 50vh; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="brand">
+        <h1>Vex-Deobf</h1>
+        <a href="https://discord.gg/vex" target="_blank">discord.gg/vex</a>
+    </div>
+    <div class="nav-actions">
+        <button class="btn-icon" onclick="toggleTheme()" id="themeBtn">
+            <i class="fas fa-moon"></i>
+        </button>
+        <button class="action-btn" onclick="processCode()">RUN</button>
+    </div>
+</header>
+
+<div class="main-layout">
+    <div class="editor-container">
+        <div class="toolbar">
+            <span>Input</span>
+            <label style="cursor: pointer;">
+                <i class="fas fa-upload"></i>
+                <input type="file" hidden onchange="handleUpload(event)">
+            </label>
+        </div>
+        <div class="editor-wrapper">
+            <div class="line-numbers" id="lineNos">1</div>
+            <textarea id="input" spellcheck="false" oninput="updateLines()" placeholder="Paste your obfuscated code here..."></textarea>
+        </div>
+    </div>
+
+    <div class="editor-container">
+        <div class="toolbar">
+            <span>Output</span>
+            <div style="display:flex; gap: 15px;">
+                <i class="fas fa-copy" style="cursor:pointer" onclick="copyOutput()"></i>
+                <i class="fas fa-download" style="cursor:pointer" onclick="downloadOutput()"></i>
+            </div>
+        </div>
+        <div class="editor-wrapper">
+            <pre id="output-pre">Clean code will appear here...</pre>
+        </div>
+    </div>
+</div>
+
+<script>
+    function toggleTheme() {
+        const root = document.documentElement;
+        const themeBtn = document.getElementById('themeBtn');
+        const isDark = root.getAttribute('data-theme') === 'dark';
+        
+        if (isDark) {
+            root.setAttribute('data-theme', 'light');
+            themeBtn.innerHTML = '<i class="fas fa-sun"></i>';
+        } else {
+            root.setAttribute('data-theme', 'dark');
+            themeBtn.innerHTML = '<i class="fas fa-moon"></i>';
+        }
+    }
+
+    function updateLines() {
+        const textarea = document.getElementById('input');
+        const lineNos = document.getElementById('lineNos');
+        const lines = textarea.value.split('\n').length;
+        lineNos.innerHTML = Array.from({length: lines}, (_, i) => i + 1).join('<br>');
+    }
+
+    async function handleUpload(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const text = await file.text();
+        document.getElementById('input').value = text;
+        updateLines();
+    }
+
+    async function processCode() {
+        const code = document.getElementById('input').value;
+        const output = document.getElementById('output-pre');
+        output.innerText = "// Deobfuscating... please wait";
+
+        try {
+            const res = await fetch('/process', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code })
+            });
+            const data = await res.json();
+            output.innerText = data.result || "// No results returned";
+        } catch (err) {
+            output.innerText = "// Error: " + err.message;
+        }
+    }
+
+    function copyOutput() {
+        const text = document.getElementById('output-pre').innerText;
+        navigator.clipboard.writeText(text);
+        alert("Copied to clipboard!");
+    }
+
+    function downloadOutput() {
+        const text = document.getElementById('output-pre').innerText;
+        const blob = new Blob([text], { type: 'text/javascript' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'vex_cleaned.js';
+        a.click();
+    }
+</script>
+
+</body>
+</html>
