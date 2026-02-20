@@ -287,26 +287,27 @@
         }
     }
 
-    async function process() {
-        const code = inputArea.value;
-        if (!code) return;
-
-        resultView.classList.remove('hidden');
-        outputArea.innerText = "// Initializing engine...";
-        
-        // Scroll to result smoothly
-        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+        async function processCode() {
+        const source = document.getElementById('input').value; // Changed variable name for clarity
+        const output = document.getElementById('output-pre');
+        output.innerText = "// Deobfuscating... please wait";
 
         try {
-            const res = await fetch('/deobfuscate', {
+            const res = await fetch('/deobfuscate', { // Changed from /process
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ code })
+                body: JSON.stringify({ source })
             });
+            
             const data = await res.json();
-            outputArea.innerText = data.result || "// Error: No output returned.";
+            
+            if (data.error) {
+                output.innerText = "// Error: " + data.error;
+            } else {
+                output.innerText = data.output || "// No results returned";
+            }
         } catch (err) {
-            outputArea.innerText = "// Critical Error: " + err.message;
+            output.innerText = "// Critical Error: " + err.message;
         }
     }
 </script>
