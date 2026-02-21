@@ -9,8 +9,13 @@ const KEYWORDS = new Set([
 export function renameVariablesAST(code) {
     const tokens = tokenize(code);
     const renameMap = new Map();
+    
+    // CRITICAL FIX: Initializing all counters properly
     let tableIndex = 1;
     let funcIndex = 1;
+    let varIndex = 1;   // Was missing
+    let argIndex = 1;   // For function parameters
+    let classIndex = 1; // For classes
 
     // Helper to find tokens skipping whitespace
     const getNext = (currentIndex, step = 1) => {
@@ -24,11 +29,11 @@ export function renameVariablesAST(code) {
         return null;
     };
 
-    /* ========= PASS 1: declarations ========= */
+    /* ========= PASS 1: Identify and Map Patterns ========= */
     for (let i = 0; i < tokens.length; i++) {
         const t = tokens[i];
 
-        // Handle Variable Declarations (var _0xabc = [...])
+        // CASE 1 & 2: Variable/Table Declarations (var _0xabc = ...)
         if (t.type === "Identifier" && ["var", "let", "const"].includes(t.value)) {
             const nameToken = getNext(i, 1);
             const assignToken = getNext(i, 2);
@@ -37,35 +42,66 @@ export function renameVariablesAST(code) {
             if (nameToken && assignToken?.token.value === "=") {
                 const name = nameToken.token.value;
                 if (isObfuscated(name)) {
-                    // Check if it's a table (array)
                     if (valueToken?.token.value === "[") {
                         renameMap.set(name, `table${tableIndex++}`);
                     } else {
-                        // Default variable name if needed
                         renameMap.set(name, `var${varIndex++}`);
                     }
                 }
             }
         }
 
-        // Handle Function Declarations (function _0xabc() {})
+        // CASE 3: Function Declarations & CASE 4: Arguments
         if (t.value === "function") {
             const nameToken = getNext(i, 1);
+            
+            // Rename the function itself
             if (nameToken && isIdentifier(nameToken.token)) {
                 const name = nameToken.token.value;
                 if (isObfuscated(name)) {
                     renameMap.set(name, `func${funcIndex++}`);
                 }
             }
+
+            // Rename Parameters/Arguments inside (arg1, arg2)
+            let openParen = getNext(i, nameToken ? 2 : 1);
+            if (openParen?.token.value === "(") {
+                let pIdx = openParen.index;
+                let offset = 1;
+                while (true) {
+                    let p = getNext(pIdx, offset);
+                    if (!p || p.token.value === ")") break;
+                    if (isIdentifier(p.token) && isObfuscated(p.token.value)) {
+                        renameMap.set(p.token.value, `arg${argIndex++}`);
+                    }
+                    pIdx = p.index; 
+                }
+            }
+        }
+
+        // CASE 5: Catch Clauses (catch (err))
+        if (t.value === "catch") {
+            const errVar = getNext(i, 2); // skips 'catch' and '('
+            if (errVar && isObfuscated(errVar.token.value)) {
+                renameMap.set(errVar.token.value, "err");
+            }
+        }
+
+        // CASE 6: Classes (class _0xabc)
+        if (t.value === "class") {
+            const className = getNext(i, 1);
+            if (className && isObfuscated(className.token.value)) {
+                renameMap.set(className.token.value, `Class${classIndex++}`);
+            }
         }
     }
 
-    /* ========= PASS 2: rename usages ========= */
+    /* ========= PASS 2: Apply Renaming to Usages ========= */
     for (let i = 0; i < tokens.length; i++) {
         const t = tokens[i];
         if (!isIdentifier(t) || KEYWORDS.has(t.value)) continue;
 
-        // Skip properties like obj._0xabc
+        // Prevent renaming properties (e.g., obj.dontRenameMe)
         let prev = null;
         for (let j = i - 1; j >= 0; j--) {
             if (tokens[j].type !== "Whitespace") {
@@ -85,68 +121,39 @@ export function renameVariablesAST(code) {
     return tokens.map(t => t.raw).join('');
 }
 
-/* ================= helpers ================= */
+/* ================= HELPERS ================= */
 
 function tokenize(code) {
     const tokens = [];
     let i = 0;
-
     while (i < code.length) {
         const c = code[i];
-
         if (/\s/.test(c)) {
             tokens.push({ type: "Whitespace", raw: c });
-            i++;
-            continue;
+            i++; continue;
         }
-
         if (c === "'" || c === '"') {
-            const q = c;
-            let start = i++;
+            const q = c; let start = i++;
             while (i < code.length) {
                 if (code[i] === "\\" && i + 1 < code.length) i += 2;
                 else if (code[i] === q) break;
                 else i++;
             }
-            i++;
-            tokens.push({ type: "String", raw: code.slice(start, i) });
-            continue;
+            i++; tokens.push({ type: "String", raw: code.slice(start, i) }); continue;
         }
-
         if (/[a-zA-Z_$]/.test(c)) {
             let start = i++;
             while (/[a-zA-Z0-9_$]/.test(code[i])) i++;
             const value = code.slice(start, i);
-            tokens.push({
-                type: "Identifier",
-                value,
-                raw: value
-            });
-            continue;
+            tokens.push({ type: "Identifier", value, raw: value }); continue;
         }
-
-        tokens.push({
-            type: "Punctuator",
-            value: c,
-            raw: c
-        });
-        i++;
+        tokens.push({ type: "Punctuator", value: c, raw: c }); i++;
     }
-
     return tokens;
 }
 
 function isIdentifier(t) {
     return t && t.type === "Identifier";
-}
-
-function isDecl(tokens, i) {
-    return (
-        tokens[i]?.type === "Identifier" &&
-        ["var","let","const"].includes(tokens[i].value) &&
-        isIdentifier(tokens[i+1]) &&
-        tokens[i+2]?.value === "="
-    );
 }
 
 function isObfuscated(name) {
