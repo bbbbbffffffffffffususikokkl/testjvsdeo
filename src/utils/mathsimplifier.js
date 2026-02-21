@@ -1,3 +1,4 @@
+// src/utils/mathsimplifier.js
 export function simplifyMath(code) {
     // Finds patterns like (0x31 * -0x2f + 0x4) and replaces them with the result
     return code.replace(/\((0x[0-9a-fA-F]+|(?:\s*[-+*/]\s*|0x[0-9a-fA-F]+|\d+)+)\)/g, (match, expr) => {

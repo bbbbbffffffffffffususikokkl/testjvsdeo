@@ -1,5 +1,4 @@
 // src/utils/refinedecals.js
-
 export function refineDecals(code) {
     let out = code;
 

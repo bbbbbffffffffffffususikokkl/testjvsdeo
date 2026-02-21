@@ -1,5 +1,4 @@
 // src/utils/hexdecoder.js
-
 function isPrintable(str) {
     return /^[\x09\x0A\x0D\x20-\x7E]*$/.test(str);
 }

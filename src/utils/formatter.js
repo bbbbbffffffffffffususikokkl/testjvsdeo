@@ -1,5 +1,4 @@
 // src/utils/formatter.js
-
 export function beautify(code) {
     let indent = 0;
     let out = '';
