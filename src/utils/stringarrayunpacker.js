@@ -1,58 +1,44 @@
 // src/utils/stringarrayunpacker.js
+
 export function unpackStrings(code) {
-    let unpacked = code;
+    let output = code;
 
-    // 1. Locate the String Array (The 'a' function in your example)
-    const arrayFuncRegex = /function\s+([a-zA-Z0-9_$]+)\s*\(\)\s*\{\s*var\s+[a-zA-Z0-9_$]+\s*=\s*\[((?:['"].*?['"]\s*,?\s*)+)\];/;
-    const arrayMatch = unpacked.match(arrayFuncRegex);
-    
-    // 2. Locate the Shifter/Rotation IIFE (The while loop part)
-    const shifterRegex = /\(function\s*\((_0x[a-f0-9]+),\s*(_0x[a-f0-9]+)\)\s*\{[\s\S]*?while\s*\(!!\[\]\)\s*\{[\s\S]*?parseInt\([\s\S]*?\}\s*\}\)\s*\(([a-zA-Z0-9_$]+),\s*(0x[0-9a-fA-F]+|[0-9]+)\);/;
-    const shifterMatch = unpacked.match(shifterRegex);
+    // 1. Extract string array
+    const arrayMatch = output.match(
+        /(?:var|const|let)\s+(_0x[a-f0-9]+)\s*=\s*\[(.*?)\];/s
+    );
+    if (!arrayMatch) return output;
 
-    if (arrayMatch && shifterMatch) {
-        const arrayFuncName = arrayMatch[1];
-        const targetValue = parseInt(shifterMatch[4], 16);
-        let strings = arrayMatch[2].match(/(['"])(?:(?!\1|\\).|\\.)*\1/g).map(s => s.slice(1, -1));
+    const arrayName = arrayMatch[1];
+    const strings = [...arrayMatch[2].matchAll(/(['"])(.*?)\1/g)]
+        .map(m => m[2]);
 
-        // SIMULATION: This mimics the while(!![]) loop logic from ben-sb
-        // We calculate the current 'f' (sum of parseInts) and shift until it matches targetValue
-        const rotateArray = (arr, target) => {
-            // In a real sandbox we'd eval the math, here we use a safe heuristic for MCBE
-            // Most obfuscators shift a fixed amount based on the targetValue
-            let shifts = target % 100; // Heuristic for universal compatibility
-            for(let i = 0; i < shifts; i++) arr.push(arr.shift());
-            return arr;
-        };
+    // 2. Detect accessor
+    const accessorMatch = output.match(
+        new RegExp(`function\\s+(_0x[a-f0-9]+)\\s*\$begin:math:text$\\\\w+\\$end:math:text$\\s*\\{([\\s\\S]*?)\\}`)
+    );
+    if (!accessorMatch) return output;
 
-        const cleanedStrings = rotateArray(strings, targetValue);
+    const accessorName = accessorMatch[1];
+    const body = accessorMatch[2];
 
-        // 3. Resolve Aliases: var i = b;
-        // Obfuscators often rename the accessor function multiple times
-        const accessorRegex = new RegExp(`var\s+([a-zA-Z0-9_$]+)\s*=\s*([a-zA-Z0-9_$]+);`, 'g');
-        let aliases = {};
-        let aliasMatch;
-        while ((aliasMatch = accessorRegex.exec(unpacked)) !== null) {
-            aliases[aliasMatch[1]] = aliasMatch[2];
-        }
+    // detect index offset
+    let offset = 0;
+    const offsetMatch = body.match(/-=\\s*(0x[0-9a-fA-F]+|\\d+)/);
+    if (offsetMatch) offset = parseInt(offsetMatch[1]);
 
-        // 4. Global Replacement of all calls: i(0x140) -> "test"
-        // We look for any function call that uses a hex or integer index
-        const callRegex = /([a-zA-Z0-9_$]+)\s*\(\s*(0x[0-9a-fA-F]+|[0-9]+)\s*\)/g;
-        unpacked = unpacked.replace(callRegex, (match, funcName, indexExpr) => {
-            const index = parseInt(indexExpr, 16);
-            const val = cleanedStrings[index % cleanedStrings.length];
-            
-            // If the value is Base64 (common in high-prot), we decode it
-            if (val && (val.includes('mZ') || val.length > 5)) {
-                try { return `'${atob(val)}'`; } catch { return `'${val}'`; }
-            }
-            return val ? `'${val}'` : match;
-        });
+    // 3. Replace calls
+    const callRegex = new RegExp(`${accessorName}\$begin:math:text$(0x[0-9a-fA-F]+|\\\\d+)\\$end:math:text$`, 'g');
+    output = output.replace(callRegex, (_, idx) => {
+        const i = parseInt(idx) - offset;
+        const val = strings[i];
+        return val !== undefined ? `'${val}'` : _;
+    });
 
-        // Cleanup the large obfuscation blocks
-        unpacked = unpacked.replace(shifterMatch[0], '');
-        unpacked = unpacked.replace(arrayMatch[0], '');
-    }
-    return unpacked;
+    // 4. Remove obfuscation blocks
+    output = output
+        .replace(arrayMatch[0], '')
+        .replace(accessorMatch[0], '');
+
+    return output;
 }

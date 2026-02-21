@@ -1,40 +1,33 @@
 // src/utils/refinedecals.js
 
 export function refineDecals(code) {
-    let refined = code;
+    let out = code;
 
-    // 1. Identify all remaining _0x names (arrays and functions)
-    const decalPattern = /(?:var|const|let|function)\s+(_0x[a-f0-9]+)/g;
-    let match;
-    const namesToRemove = [];
+    const defs = [...out.matchAll(
+        /(function|var|let|const)\s+(_0x[a-f0-9]+)/g
+    )];
 
-    while ((match = decalPattern.exec(refined)) !== null) {
-        const name = match[1];
-        
-        // Count occurrences of this name in the code
-        const regex = new RegExp(`\\b${name}\\b`, 'g');
-        const count = (refined.match(regex) || []).length;
+    for (const [, type, name] of defs) {
+        const usage = new RegExp(`\\b${name}\\b`, 'g');
+        const count = (out.match(usage) || []).length;
 
-        // If it only appears once (the definition), it's a "Decal" (useless)
+        // defined but never used
         if (count <= 1) {
-            namesToRemove.push(name);
+            out = out.replace(
+                new RegExp(
+                    `${type}\\s+${name}[\\s\\S]*?(;|\\})`,
+                    'g'
+                ),
+                ''
+            );
         }
     }
 
-    // 2. Remove the definitions of those useless names
-    namesToRemove.forEach(name => {
-        // Removes: var _0x1a = [...]; OR function _0x2b(){...}
-        const removeRegex = new RegExp(`(?:var|const|let|function)\\s+${name}\\s*(=[\\s\\S]*?;|\\([\\s\\S]*?\\)\\s*\\{[\\s\\S]*?\\};?)`, 'g');
-        refined = refined.replace(removeRegex, '');
-    });
+    // Remove obfuscation IIFEs
+    out = out.replace(
+        /\(function\s*\(.*?\)\s*\{[\s\S]*?\}\s*\)\s*\(.*?\);?/g,
+        ''
+    );
 
-    // 3. Remove Obfuscation Logic "Decals" (IIFEs that shift/rotate)
-    // Matches: (function(a){...})(_0x1a);
-    refined = refined.replace(/\(function\s*\(.*?\)\s*\{[\s\S]*?\}\s*\)\s*\(_0x[a-f0-9]+\s*\);?/g, '');
-
-    // 4. Final Cleanup: Convert brackets to dots (console['warn'] -> console.warn)
-    refined = refined.replace(/([a-zA-Z0-9_$]+)\[['"]([^'"]+)['"]\]/g, '$1.$2');
-
-    // 5. Purge empty lines and comments left behind
-    return refined.replace(/^\s*[\r\n]/gm, '').trim();
+    return out.replace(/^\s*[\r\n]/gm, '').trim();
 }

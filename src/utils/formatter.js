@@ -1,11 +1,18 @@
+// src/utils/formatter.js
+
 export function beautify(code) {
     let indent = 0;
-    const lines = code.split('\n');
-    return lines.map(line => {
-        line = line.trim();
-        if (line.match(/[}\]]/)) indent--;
-        const formatted = "    ".repeat(Math.max(0, indent)) + line;
-        if (line.match(/[{[]/)) indent++;
-        return formatted;
-    }).join('\n');
+    let out = '';
+
+    for (const line of code.split('\n')) {
+        const trimmed = line.trim();
+
+        for (const c of trimmed) if (c === '}') indent--;
+
+        out += '    '.repeat(Math.max(0, indent)) + trimmed + '\n';
+
+        for (const c of trimmed) if (c === '{') indent++;
+    }
+
+    return out.trim();
 }
