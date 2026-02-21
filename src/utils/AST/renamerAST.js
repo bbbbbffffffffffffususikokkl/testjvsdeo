@@ -8,63 +8,77 @@ const KEYWORDS = new Set([
 
 export function renameVariablesAST(code) {
     const tokens = tokenize(code);
-
     const renameMap = new Map();
     let tableIndex = 1;
     let funcIndex = 1;
-    let varIndex = 1;
+
+    // Helper to find tokens skipping whitespace
+    const getNext = (currentIndex, step = 1) => {
+        let found = 0;
+        for (let i = currentIndex + 1; i < tokens.length; i++) {
+            if (tokens[i].type !== "Whitespace") {
+                found++;
+                if (found === step) return { token: tokens[i], index: i };
+            }
+        }
+        return null;
+    };
 
     /* ========= PASS 1: declarations ========= */
-
     for (let i = 0; i < tokens.length; i++) {
         const t = tokens[i];
 
-        // var _0x123 = [...]
-        if (isDecl(tokens, i) && tokens[i+3]?.value === "[") {
-            const name = tokens[i+1].value;
-            if (isObfuscated(name)) {
-                renameMap.set(name, `table${tableIndex++}`);
+        // Handle Variable Declarations (var _0xabc = [...])
+        if (t.type === "Identifier" && ["var", "let", "const"].includes(t.value)) {
+            const nameToken = getNext(i, 1);
+            const assignToken = getNext(i, 2);
+            const valueToken = getNext(i, 3);
+
+            if (nameToken && assignToken?.token.value === "=") {
+                const name = nameToken.token.value;
+                if (isObfuscated(name)) {
+                    // Check if it's a table (array)
+                    if (valueToken?.token.value === "[") {
+                        renameMap.set(name, `table${tableIndex++}`);
+                    } else {
+                        // Default variable name if needed
+                        renameMap.set(name, `var${varIndex++}`);
+                    }
+                }
             }
         }
 
-        // function _0xabc() {}
-        if (t.value === "function" && isIdentifier(tokens[i+1])) {
-            const name = tokens[i+1].value;
-            if (isObfuscated(name)) {
-                renameMap.set(name, `func${funcIndex++}`);
+        // Handle Function Declarations (function _0xabc() {})
+        if (t.value === "function") {
+            const nameToken = getNext(i, 1);
+            if (nameToken && isIdentifier(nameToken.token)) {
+                const name = nameToken.token.value;
+                if (isObfuscated(name)) {
+                    renameMap.set(name, `func${funcIndex++}`);
+                }
             }
-        }
-
-        // import { world as _0x123 }
-        if (t.value === "as" && isIdentifier(tokens[i+1]) && isIdentifier(tokens[i-1])) {
-            renameMap.set(tokens[i+1].value, tokens[i-1].value);
-        }
-
-        // const _0x123 = event.sender
-        if (
-            isDecl(tokens, i) &&
-            tokens[i+3]?.value === "event" &&
-            tokens[i+4]?.value === "." &&
-            tokens[i+5]?.value === "sender"
-        ) {
-            renameMap.set(tokens[i+1].value, "player");
         }
     }
 
     /* ========= PASS 2: rename usages ========= */
-
     for (let i = 0; i < tokens.length; i++) {
         const t = tokens[i];
-        if (!isIdentifier(t)) continue;
-        if (KEYWORDS.has(t.value)) continue;
+        if (!isIdentifier(t) || KEYWORDS.has(t.value)) continue;
 
-        // skip property names: obj.property
-        if (tokens[i-1]?.value === ".") continue;
+        // Skip properties like obj._0xabc
+        let prev = null;
+        for (let j = i - 1; j >= 0; j--) {
+            if (tokens[j].type !== "Whitespace") {
+                prev = tokens[j];
+                break;
+            }
+        }
+        if (prev?.value === ".") continue;
 
         const renamed = renameMap.get(t.value);
         if (renamed) {
             t.value = renamed;
-            t.raw = renamed; // 🔥 CRITICAL FIX
+            t.raw = renamed;
         }
     }
 
