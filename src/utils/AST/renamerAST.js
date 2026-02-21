@@ -1,21 +1,24 @@
 // src/utils/AST/renamerAST.js
+
 const KEYWORDS = new Set([
-    "var","let","const","function","return","if","else","for","while",
-    "switch","case","break","continue","import","from","as","new","try",
-    "catch","finally","throw","typeof","instanceof","void","delete",
-    "class","extends","super","this", "export", "default"
+    "var", "let", "const", "function", "return", "if", "else", "for", "while",
+    "switch", "case", "break", "continue", "import", "from", "as", "new", "try",
+    "catch", "finally", "throw", "typeof", "instanceof", "void", "delete",
+    "class", "extends", "super", "this", "export", "default", "constructor"
 ]);
 
 export function renameVariablesAST(code) {
     const tokens = tokenize(code);
     const renameMap = new Map();
     
+    // Counters for semantic renaming
     let tableIndex = 1;
     let funcIndex = 1;
     let varIndex = 1;
     let argIndex = 1;
     let classIndex = 1;
 
+    // Helper: Look forward for non-whitespace tokens
     const getNext = (currentIndex, step = 1) => {
         let found = 0;
         for (let i = currentIndex + 1; i < tokens.length; i++) {
@@ -27,6 +30,7 @@ export function renameVariablesAST(code) {
         return null;
     };
 
+    // Helper: Look backward for non-whitespace tokens
     const getNextBack = (currentIndex, step = 1) => {
         let found = 0;
         for (let i = currentIndex - 1; i >= 0; i--) {
@@ -41,8 +45,26 @@ export function renameVariablesAST(code) {
     /* ========= PASS 1: Identify and Map Patterns ========= */
     for (let i = 0; i < tokens.length; i++) {
         const t = tokens[i];
+        
+if (t.value === "function") {
+    const next = getNext(i, 1);
+    if (next && next.token.value === "(") {
+        let pIdx = next.index;
+        let offset = 1;
+        while (true) {
+            let p = getNext(pIdx, offset);
+            if (!p || p.token.value === ")") break;
+            if (isIdentifier(p.token) && isObfuscated(p.token.value)) {
+                if (!renameMap.has(p.token.value)) {
+                    renameMap.set(p.token.value, `arg${argIndex++}`);
+                }
+            }
+            pIdx = p.index;
+        }
+    }
+}
 
-        // CASE 1: Object Destructuring (hours: _0x5f068e)
+        // 1. Object Destructuring (hours: _0x5f068e)
         if (t.value === ":") {
             const prev = getNextBack(i, 1);
             const next = getNext(i, 1);
@@ -51,30 +73,26 @@ export function renameVariablesAST(code) {
             }
         }
 
-        // CASE 2: Arrow Functions (_0x3f13d8 =>)
+        // 2. Arrow Functions (arg => OR (arg1, arg2) =>)
         if (t.value === "=>") {
-            const param = getNextBack(i, 1);
-            if (param && isIdentifier(param.token) && isObfuscated(param.token.value)) {
-                if (!renameMap.has(param.token.value)) {
-                    renameMap.set(param.token.value, `arg${argIndex++}`);
-                }
-            } else if (param && param.token.value === ")") {
-                let pIdx = param.index;
+            const prev = getNextBack(i, 1);
+            if (prev && isIdentifier(prev.token) && isObfuscated(prev.token.value)) {
+                if (!renameMap.has(prev.token.value)) renameMap.set(prev.token.value, `arg${argIndex++}`);
+            } else if (prev?.token.value === ")") {
+                let pIdx = prev.index;
                 let offset = 1;
                 while (true) {
                     let p = getNextBack(pIdx, offset);
                     if (!p || p.token.value === "(") break;
                     if (isIdentifier(p.token) && isObfuscated(p.token.value)) {
-                        if (!renameMap.has(p.token.value)) {
-                            renameMap.set(p.token.value, `arg${argIndex++}`);
-                        }
+                        if (!renameMap.has(p.token.value)) renameMap.set(p.token.value, `arg${argIndex++}`);
                     }
                     pIdx = p.index;
                 }
             }
         }
 
-        // CASE 3: Imports
+        // 3. Import Intelligence
         if (t.value === "import") {
             const nameTok = getNext(i, 1);
             const fromTok = getNext(i, 2);
@@ -92,7 +110,7 @@ export function renameVariablesAST(code) {
             }
         }
 
-        // CASE 4: Standard Declarations
+        // 4. Standard Variable Declarations
         if (t.type === "Identifier" && ["var", "let", "const"].includes(t.value)) {
             const nameToken = getNext(i, 1);
             const assignToken = getNext(i, 2);
@@ -109,16 +127,16 @@ export function renameVariablesAST(code) {
             }
         }
 
-        // CASE 5: Functions & Params
-        if (t.value === "function") {
-            const nameToken = getNext(i, 1);
+        // 5. Functions & Class Constructor Parameters
+        if (t.value === "function" || t.value === "constructor") {
+            const nameToken = t.value === "function" ? getNext(i, 1) : null;
             if (nameToken && isIdentifier(nameToken.token)) {
                 const name = nameToken.token.value;
                 if (isObfuscated(name) && !renameMap.has(name)) {
                     renameMap.set(name, `func${funcIndex++}`);
                 }
             }
-            let openParen = getNext(i, nameToken ? 2 : 1);
+            let openParen = getNext(i, (t.value === "function" && nameToken) ? 2 : 1);
             if (openParen?.token.value === "(") {
                 let pIdx = openParen.index;
                 let offset = 1;
@@ -126,16 +144,14 @@ export function renameVariablesAST(code) {
                     let p = getNext(pIdx, offset);
                     if (!p || p.token.value === ")") break;
                     if (isIdentifier(p.token) && isObfuscated(p.token.value)) {
-                        if (!renameMap.has(p.token.value)) {
-                            renameMap.set(p.token.value, `arg${argIndex++}`);
-                        }
+                        if (!renameMap.has(p.token.value)) renameMap.set(p.token.value, `arg${argIndex++}`);
                     }
                     pIdx = p.index; 
                 }
             }
         }
 
-        // CASE 6: Catch Clauses
+        // 6. Catch Clauses
         if (t.value === "catch") {
             const errVar = getNext(i, 2);
             if (errVar && isObfuscated(errVar.token.value)) {
@@ -143,7 +159,7 @@ export function renameVariablesAST(code) {
             }
         }
 
-        // CASE 7: Classes
+        // 7. Class Names
         if (t.value === "class") {
             const className = getNext(i, 1);
             if (className && isObfuscated(className.token.value)) {
@@ -152,17 +168,14 @@ export function renameVariablesAST(code) {
         }
     }
 
-    /* ========= PASS 2: Apply Renaming ========= */
+    /* ========= PASS 2: Apply Renaming to Usages ========= */
     for (let i = 0; i < tokens.length; i++) {
         const t = tokens[i];
         if (!isIdentifier(t) || KEYWORDS.has(t.value)) continue;
 
         let prev = null;
         for (let j = i - 1; j >= 0; j--) {
-            if (tokens[j].type !== "Whitespace") {
-                prev = tokens[j];
-                break;
-            }
+            if (tokens[j].type !== "Whitespace") { prev = tokens[j]; break; }
         }
         if (prev?.value === ".") continue;
 
@@ -175,6 +188,8 @@ export function renameVariablesAST(code) {
 
     return tokens.map(t => t.raw).join('');
 }
+
+/* ================= HELPERS ================= */
 
 function tokenize(code) {
     const tokens = [];
