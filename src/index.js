@@ -7,8 +7,8 @@ export default {
         if (request.method === "POST" && url.pathname === "/process") {
             const startTime = Date.now();
             try {
-                const { code } = await request.json();
-                const result = deobfuscate(code, startTime);
+                const { code, settings } = await request.json();
+                const result = deobfuscate(code, settings, startTime);
                 
                 return new Response(JSON.stringify({ result }), {
                     headers: { "Content-Type": "application/json" }
