@@ -23,7 +23,7 @@
             margin: 0;
             background-color: var(--bg);
             color: var(--text-main);
-            font-family: 'Inter', -apple-system, sans-serif;
+            font-family: 'Inter', sans-serif;
             display: flex;
             justify-content: center;
             min-height: 100vh;
@@ -33,16 +33,16 @@
         .page-wrapper {
             width: 100%;
             max-width: 850px;
-            padding: 60px 20px;
+            padding: 40px 20px;
             display: flex;
             flex-direction: column;
-            gap: 40px;
+            gap: 30px;
             position: relative;
         }
 
         header { text-align: center; }
         header h1 {
-            font-size: 3rem;
+            font-size: clamp(2rem, 8vw, 3rem);
             font-weight: 800;
             margin: 0;
             letter-spacing: -0.06em;
@@ -53,10 +53,12 @@
         .sub-header {
             display: flex;
             justify-content: center;
+            align-items: center;
             gap: 12px;
             margin-top: 16px;
             font-size: 0.8rem;
             font-weight: 600;
+            flex-wrap: wrap;
         }
 
         .badge {
@@ -67,71 +69,33 @@
             color: var(--text-muted);
         }
 
-        .container {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        /* State management for transitions */
-        .content-hidden {
-            opacity: 0;
-            transform: scale(0.98);
-            pointer-events: none;
-            filter: blur(15px);
-        }
-
-        .header-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 8px;
-        }
-
-        .header-label {
-            font-size: 0.7rem;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            color: var(--text-muted);
-        }
-
-        .icon-actions {
-            display: flex;
-            gap: 12px;
-            align-items: center;
-        }
-
-        .icon-btn {
+        .settings-trigger {
             background: none;
             border: none;
-            color: var(--text-muted);
+            color: var(--accent);
             cursor: pointer;
-            font-size: 1.1rem;
-            padding: 4px;
+            font-size: 0.8rem;
+            font-weight: 700;
             display: flex;
             align-items: center;
-            justify-content: center;
+            gap: 5px;
+            padding: 2px 8px;
         }
 
-        .icon-btn:hover { color: var(--text-main); }
-        .icon-btn.active { color: var(--accent); transform: rotate(90deg); }
+        .settings-trigger:hover { filter: brightness(1.2); }
 
-        /* Settings View Overlay */
+        /* Settings View */
         #settings-view {
-            position: absolute;
-            top: 220px;
-            left: 20px;
-            right: 20px;
             background: var(--card);
             border: 1px solid var(--border);
             border-radius: 24px;
-            padding: 40px;
+            padding: clamp(20px, 5vw, 40px);
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 15px;
             z-index: 100;
             box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+            width: 100%;
         }
 
         .setting-card {
@@ -144,152 +108,171 @@
             align-items: center;
         }
 
-        .setting-info h3 { margin: 0; font-size: 0.9rem; color: #fff; }
-        .setting-info p { margin: 4px 0 0; font-size: 0.7rem; color: var(--text-muted); }
+        .setting-card h3 { margin: 0; font-size: 0.9rem; color: #fff; }
 
-        /* Switches */
-        .switch { position: relative; display: inline-block; width: 40px; height: 22px; }
-        .switch input { opacity: 0; width: 0; height: 0; }
-        .slider {
-            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
-            background-color: #262626; border-radius: 34px;
+        /* Custom Checkbox */
+        .checkbox-container {
+            display: block;
+            position: relative;
+            padding-left: 30px;
+            cursor: pointer;
+            user-select: none;
         }
-        .slider:before {
-            position: absolute; content: ""; height: 16px; width: 16px;
-            left: 3px; bottom: 3px; background-color: white; border-radius: 50%;
-        }
-        input:checked + .slider { background-color: var(--accent); }
-        input:checked + .slider:before { transform: translateX(18px); }
 
-        /* Layout Elements */
+        .checkbox-container input { position: absolute; opacity: 0; cursor: pointer; height: 0; width: 0; }
+
+        .checkmark {
+            position: absolute;
+            top: -10px;
+            left: 0;
+            height: 22px;
+            width: 22px;
+            background-color: #262626;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+        }
+
+        .checkbox-container:hover input ~ .checkmark { background-color: #333; }
+        .checkbox-container input:checked ~ .checkmark { background-color: var(--accent); border-color: var(--accent); }
+        .checkmark:after {
+            content: "";
+            position: absolute;
+            display: none;
+            left: 7px;
+            top: 3px;
+            width: 5px;
+            height: 10px;
+            border: solid white;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
+        }
+        .checkbox-container input:checked ~ .checkmark:after { display: block; }
+
+        /* Content Visibility */
+        .container { display: flex; flex-direction: column; gap: 12px; }
+        .content-hidden { display: none !important; }
+
+        .header-row { display: flex; justify-content: space-between; align-items: center; padding: 0 8px; }
+        .header-label { font-size: 0.7rem; font-weight: 800; text-transform: uppercase; color: var(--text-muted); }
+        
+        .icon-actions { display: flex; gap: 12px; }
+        .icon-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.1rem; }
+        .icon-btn:hover { color: var(--text-main); }
+
         .box { background: var(--card); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+        
         textarea {
-            width: 100%; height: 280px; background: transparent; border: none; padding: 24px;
+            width: 100%; height: 280px; background: transparent; border: none; padding: 20px;
             color: #e5e5e5; font-family: 'JetBrains Mono', monospace; font-size: 14px;
-            line-height: 1.7; resize: none; outline: none;
+            outline: none; resize: none;
         }
+
         .btn-run {
-            width: 100%; padding: 20px; background: var(--accent); color: white;
-            border: none; border-radius: 16px; font-weight: 800; font-size: 1.1rem;
-            cursor: pointer; box-shadow: 0 10px 30px -10px var(--accent-glow); margin-top: 10px;
+            width: 100%; padding: 18px; background: var(--accent); color: white;
+            border: none; border-radius: 16px; font-weight: 800; font-size: 1rem;
+            cursor: pointer; box-shadow: 0 10px 30px -10px var(--accent-glow);
         }
-        .btn-run:hover { transform: translateY(-2px); background: #818cf8; }
 
-        .output-box { border-color: rgba(16, 185, 129, 0.2); background: #080808; }
         #output-pre {
-            height: 320px; overflow-y: auto; padding: 24px; margin: 0;
+            height: 320px; overflow-y: auto; padding: 20px; margin: 0;
             white-space: pre; font-family: 'JetBrains Mono', monospace;
-            font-size: 14px; color: var(--success); line-height: 1.7;
+            font-size: 14px; color: var(--success);
         }
 
-        .hidden { display: none !important; opacity: 0; }
-        ::-webkit-scrollbar { width: 6px; }
+        .hidden { display: none !important; }
+        ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-thumb { background: #262626; border-radius: 10px; }
+
+        @media (max-width: 600px) {
+            .page-wrapper { padding: 20px 15px; }
+            #settings-view { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
 
 <div class="page-wrapper">
-    <header id="main-header">
+    <header>
         <h1>Vexile <span>Deobfuscator</span></h1>
         <div class="sub-header">
             <span class="badge">V1.0.4</span>
             <a href="https://discord.gg/vex" target="_blank" style="color: var(--accent); text-decoration: none;">discord.gg/vex</a>
+            <button class="settings-trigger" onclick="toggleSettings()" id="set-btn">
+                <i class="fas fa-cog"></i> SETTINGS
+            </button>
         </div>
     </header>
 
     <div id="settings-view" class="hidden">
         <div class="setting-card">
-            <div class="setting-info"><h3>Dead Code Remover</h3><p>Remove unused variables/logic.</p></div>
-            <label class="switch"><input type="checkbox" id="deadCode"><span class="slider"></span></label>
+            <h3>Dead Code Remover</h3>
+            <label class="checkbox-container"><input type="checkbox" id="deadCode" checked><span class="checkmark"></span></label>
         </div>
         <div class="setting-card">
-            <div class="setting-info"><h3>Decode Hex</h3><p>Convert \x hex to strings.</p></div>
-            <label class="switch"><input type="checkbox" id="decodeHex" checked><span class="slider"></span></label>
+            <h3>Decode Hex</h3>
+            <label class="checkbox-container"><input type="checkbox" id="decodeHex" checked><span class="checkmark"></span></label>
         </div>
         <div class="setting-card">
-            <div class="setting-info"><h3>Rename Strings</h3><p>Simplify obfuscated names.</p></div>
-            <label class="switch"><input type="checkbox" id="renameStrings"><span class="slider"></span></label>
+            <h3>Rename Strings</h3>
+            <label class="checkbox-container"><input type="checkbox" id="renameStrings" checked><span class="checkmark"></span></label>
         </div>
         <div class="setting-card">
-            <div class="setting-info"><h3>Refine Decals</h3><p>Beautify internal VM structures.</p></div>
-            <label class="switch"><input type="checkbox" id="refineDecals" checked><span class="slider"></span></label>
+            <h3>Refine Decals</h3>
+            <label class="checkbox-container"><input type="checkbox" id="refineDecals" checked><span class="checkmark"></span></label>
         </div>
     </div>
 
-    <div id="input-container" class="container">
-        <div class="header-row">
-            <span class="header-label">Source Input</span>
-            <div class="icon-actions">
-                <button class="icon-btn" id="settings-btn" onclick="toggleSettings()" title="Settings">
-                    <i class="fas fa-cog"></i>
-                </button>
-                <button class="icon-btn" onclick="pasteInput()" title="Paste">
-                    <i class="fas fa-paste"></i>
-                </button>
-                <button class="icon-btn" onclick="clearInput()" title="Clear">
-                    <i class="fas fa-trash-can"></i>
-                </button>
-                <label class="icon-btn" style="cursor: pointer;" title="Upload">
-                    <i class="fas fa-upload"></i>
-                    <input type="file" hidden onchange="handleUpload(event)">
-                </label>
+    <div id="main-ui">
+        <div class="container">
+            <div class="header-row">
+                <span class="header-label">Source Input</span>
+                <div class="icon-actions">
+                    <button class="icon-btn" onclick="pasteInput()"><i class="fas fa-paste"></i></button>
+                    <button class="icon-btn" onclick="clearInput()"><i class="fas fa-trash-can"></i></button>
+                </div>
             </div>
+            <div class="box">
+                <textarea id="input" placeholder='// Paste obfuscated code here...' spellcheck="false"></textarea>
+            </div>
+            <button class="btn-run" onclick="processCode()">Deobfuscate Script</button>
         </div>
-        <div class="box">
-            <textarea id="input" placeholder='// Paste obfuscated code here...' spellcheck="false"></textarea>
-        </div>
-        <button id="run-btn" class="btn-run" onclick="processCode()">Deobfuscate Script</button>
-    </div>
 
-    <div id="result-view" class="container hidden">
-        <div class="header-row">
-            <span class="header-label" style="color: var(--success)">Cleaned Output</span>
-            <div class="icon-actions">
-                <button class="icon-btn" onclick="downloadOutput()" title="Download"><i class="fas fa-download"></i></button>
-                <button class="icon-btn" onclick="copyOutput()" title="Copy"><i class="fas fa-copy"></i></button>
+        <div id="result-view" class="container hidden" style="margin-top: 25px;">
+            <div class="header-row">
+                <span class="header-label" style="color: var(--success)">Cleaned Output</span>
+                <div class="icon-actions">
+                    <button class="icon-btn" onclick="downloadOutput()"><i class="fas fa-download"></i></button>
+                    <button class="icon-btn" onclick="copyOutput()"><i class="fas fa-copy"></i></button>
+                </div>
             </div>
-        </div>
-        <div class="box output-box">
-            <pre id="output-pre">Clean code will appear here...</pre>
+            <div class="box">
+                <pre id="output-pre">Clean code will appear here...</pre>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
-    let settingsOpen = false;
-
     function toggleSettings() {
-        const settingsView = document.getElementById('settings-view');
-        const inputArea = document.querySelector('.box');
-        const runBtn = document.getElementById('run-btn');
-        const resultView = document.getElementById('result-view');
-        const settingsBtn = document.getElementById('settings-btn');
-        const header = document.getElementById('main-header');
+        const sv = document.getElementById('settings-view');
+        const ui = document.getElementById('main-ui');
+        const btn = document.getElementById('set-btn');
 
-        settingsOpen = !settingsOpen;
-        
-        if (settingsOpen) {
-            settingsView.classList.remove('hidden');
-            inputArea.classList.add('content-hidden');
-            runBtn.classList.add('content-hidden');
-            resultView.classList.add('content-hidden');
-            settingsBtn.classList.add('active');
-            settingsBtn.innerHTML = '<i class="fas fa-times"></i>';
+        if (sv.classList.contains('hidden')) {
+            sv.classList.remove('hidden');
+            ui.classList.add('content-hidden');
+            btn.innerHTML = '<i class="fas fa-times"></i> BACK TO EDITOR';
         } else {
-            settingsView.classList.add('hidden');
-            inputArea.classList.remove('content-hidden');
-            runBtn.classList.remove('content-hidden');
-            resultView.classList.remove('content-hidden');
-            settingsBtn.classList.remove('active');
-            settingsBtn.innerHTML = '<i class="fas fa-cog"></i>';
+            sv.classList.add('hidden');
+            ui.classList.remove('content-hidden');
+            btn.innerHTML = '<i class="fas fa-cog"></i> SETTINGS';
         }
     }
 
     async function processCode() {
         const code = document.getElementById('input').value;
-        const output = document.getElementById('output-pre');
-        const resultView = document.getElementById('result-view');
+        const out = document.getElementById('output-pre');
+        const rv = document.getElementById('result-view');
         if (!code) return;
 
         const settings = {
@@ -299,9 +282,8 @@
             refineDecals: document.getElementById('refineDecals').checked
         };
 
-        resultView.classList.remove('hidden');
-        resultView.classList.remove('content-hidden');
-        output.innerText = "// Deobfuscating... please wait";
+        rv.classList.remove('hidden');
+        out.innerText = "// Processing...";
 
         try {
             const res = await fetch('/process', {
@@ -310,40 +292,18 @@
                 body: JSON.stringify({ code, settings })
             });
             const data = await res.json();
-            output.innerText = data.result || "// No results returned";
-        } catch (err) {
-            output.innerText = "// Error: " + err.message;
-        }
+            out.innerText = data.result || "// Error";
+        } catch (e) { out.innerText = "// Network Error"; }
     }
 
-    // Restore all functions
-    async function pasteInput() {
-        try { const text = await navigator.clipboard.readText(); document.getElementById('input').value = text; } catch (err) {}
-    }
-
-    function clearInput() {
-        document.getElementById('input').value = '';
-        document.getElementById('result-view').classList.add('hidden');
-    }
-
-    async function handleUpload(e) {
-        const file = e.target.files[0];
-        if (file) { const text = await file.text(); document.getElementById('input').value = text; }
-    }
-
-    function copyOutput() {
-        navigator.clipboard.writeText(document.getElementById('output-pre').innerText);
-        alert("Copied!");
-    }
-
+    async function pasteInput() { try { const t = await navigator.clipboard.readText(); document.getElementById('input').value = t; } catch(e){} }
+    function clearInput() { document.getElementById('input').value = ''; document.getElementById('result-view').classList.add('hidden'); }
+    function copyOutput() { navigator.clipboard.writeText(document.getElementById('output-pre').innerText); alert("Copied!"); }
     function downloadOutput() {
-        const text = document.getElementById('output-pre').innerText;
-        const blob = new Blob([text], { type: 'text/javascript' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url; a.download = 'vex_cleaned.js'; a.click();
+        const b = new Blob([document.getElementById('output-pre').innerText], {type: 'text/javascript'});
+        const u = URL.createObjectURL(b);
+        const a = document.createElement('a'); a.href = u; a.download = 'cleaned.js'; a.click();
     }
 </script>
-
 </body>
 </html>
