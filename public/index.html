@@ -148,7 +148,6 @@
         }
         .checkbox-container input:checked ~ .checkmark:after { display: block; }
 
-        /* Content Visibility */
         .container { display: flex; flex-direction: column; gap: 12px; }
         .content-hidden { display: none !important; }
 
@@ -227,8 +226,12 @@
             <div class="header-row">
                 <span class="header-label">Source Input</span>
                 <div class="icon-actions">
-                    <button class="icon-btn" onclick="pasteInput()"><i class="fas fa-paste"></i></button>
-                    <button class="icon-btn" onclick="clearInput()"><i class="fas fa-trash-can"></i></button>
+                    <button class="icon-btn" onclick="pasteInput()" title="Paste"><i class="fas fa-paste"></i></button>
+                    <button class="icon-btn" onclick="clearInput()" title="Clear"><i class="fas fa-trash-can"></i></button>
+                    <label class="icon-btn" style="cursor: pointer;" title="Upload">
+                        <i class="fas fa-upload"></i>
+                        <input type="file" hidden onchange="handleUpload(event)">
+                    </label>
                 </div>
             </div>
             <div class="box">
@@ -267,6 +270,13 @@
             ui.classList.remove('content-hidden');
             btn.innerHTML = '<i class="fas fa-cog"></i> SETTINGS';
         }
+    }
+
+    async function handleUpload(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const text = await file.text();
+        document.getElementById('input').value = text;
     }
 
     async function processCode() {
