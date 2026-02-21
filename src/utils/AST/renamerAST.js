@@ -168,16 +168,14 @@ if (t.value === "function") {
         }
     }
 
-    /* ========= PASS 2: Apply Renaming to Usages ========= */
+       /* ========= PASS 2: Apply Renaming to Usages ========= */
     for (let i = 0; i < tokens.length; i++) {
         const t = tokens[i];
+        
         if (!isIdentifier(t) || KEYWORDS.has(t.value)) continue;
 
-        let prev = null;
-        for (let j = i - 1; j >= 0; j--) {
-            if (tokens[j].type !== "Whitespace") { prev = tokens[j]; break; }
-        }
-        if (prev?.value === ".") continue;
+        let prev = getNextBack(i, 1);
+        if (prev && prev.token.value === ".") continue;
 
         const renamed = renameMap.get(t.value);
         if (renamed) {
