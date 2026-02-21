@@ -10,12 +10,12 @@ export function renameVariablesAST(code) {
     const tokens = tokenize(code);
     const renameMap = new Map();
     
-    // CRITICAL FIX: Initializing all counters properly
+    // Counters for generic renaming
     let tableIndex = 1;
     let funcIndex = 1;
-    let varIndex = 1;   // Was missing
-    let argIndex = 1;   // For function parameters
-    let classIndex = 1; // For classes
+    let varIndex = 1;
+    let argIndex = 1;
+    let classIndex = 1;
 
     // Helper to find tokens skipping whitespace
     const getNext = (currentIndex, step = 1) => {
@@ -33,7 +33,27 @@ export function renameVariablesAST(code) {
     for (let i = 0; i < tokens.length; i++) {
         const t = tokens[i];
 
-        // CASE 1 & 2: Variable/Table Declarations (var _0xabc = ...)
+        // CASE 1: Imports (import _0xabc from './config.js')
+        if (t.value === "import") {
+            const nameTok = getNext(i, 1);
+            const fromTok = getNext(i, 2);
+            const pathTok = getNext(i, 3);
+
+            if (nameTok && fromTok?.token.value === "from" && pathTok?.token.type === "String") {
+                const originalName = nameTok.token.value;
+                if (isObfuscated(originalName)) {
+                    let path = pathTok.token.raw.replace(/['"]/g, '');
+                    let fileName = path.split('/').pop().split('.')[0];
+                    let cleanName = fileName.replace(/[^a-zA-Z0-9]/g, '');
+                    let finalName = cleanName.charAt(0).toUpperCase() + cleanName.slice(1);
+                    
+                    if (!finalName) finalName = "Module" + varIndex++;
+                    renameMap.set(originalName, finalName);
+                }
+            }
+        }
+
+        // CASE 2: Variable/Table Declarations (var _0xabc = ...)
         if (t.type === "Identifier" && ["var", "let", "const"].includes(t.value)) {
             const nameToken = getNext(i, 1);
             const assignToken = getNext(i, 2);
@@ -41,7 +61,7 @@ export function renameVariablesAST(code) {
 
             if (nameToken && assignToken?.token.value === "=") {
                 const name = nameToken.token.value;
-                if (isObfuscated(name)) {
+                if (isObfuscated(name) && !renameMap.has(name)) {
                     if (valueToken?.token.value === "[") {
                         renameMap.set(name, `table${tableIndex++}`);
                     } else {
@@ -51,19 +71,16 @@ export function renameVariablesAST(code) {
             }
         }
 
-        // CASE 3: Function Declarations & CASE 4: Arguments
+        // CASE 3: Functions & CASE 4: Arguments
         if (t.value === "function") {
             const nameToken = getNext(i, 1);
-            
-            // Rename the function itself
             if (nameToken && isIdentifier(nameToken.token)) {
                 const name = nameToken.token.value;
-                if (isObfuscated(name)) {
+                if (isObfuscated(name) && !renameMap.has(name)) {
                     renameMap.set(name, `func${funcIndex++}`);
                 }
             }
 
-            // Rename Parameters/Arguments inside (arg1, arg2)
             let openParen = getNext(i, nameToken ? 2 : 1);
             if (openParen?.token.value === "(") {
                 let pIdx = openParen.index;
@@ -72,7 +89,9 @@ export function renameVariablesAST(code) {
                     let p = getNext(pIdx, offset);
                     if (!p || p.token.value === ")") break;
                     if (isIdentifier(p.token) && isObfuscated(p.token.value)) {
-                        renameMap.set(p.token.value, `arg${argIndex++}`);
+                        if (!renameMap.has(p.token.value)) {
+                            renameMap.set(p.token.value, `arg${argIndex++}`);
+                        }
                     }
                     pIdx = p.index; 
                 }
@@ -81,13 +100,13 @@ export function renameVariablesAST(code) {
 
         // CASE 5: Catch Clauses (catch (err))
         if (t.value === "catch") {
-            const errVar = getNext(i, 2); // skips 'catch' and '('
+            const errVar = getNext(i, 2);
             if (errVar && isObfuscated(errVar.token.value)) {
                 renameMap.set(errVar.token.value, "err");
             }
         }
 
-        // CASE 6: Classes (class _0xabc)
+        // CASE 6: Classes
         if (t.value === "class") {
             const className = getNext(i, 1);
             if (className && isObfuscated(className.token.value)) {
@@ -101,7 +120,6 @@ export function renameVariablesAST(code) {
         const t = tokens[i];
         if (!isIdentifier(t) || KEYWORDS.has(t.value)) continue;
 
-        // Prevent renaming properties (e.g., obj.dontRenameMe)
         let prev = null;
         for (let j = i - 1; j >= 0; j--) {
             if (tokens[j].type !== "Whitespace") {
