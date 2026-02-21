@@ -2,14 +2,14 @@
 export function removeJunk(code) {
     let cleaned = code;
 
-    cleaned = cleaned.replace(/\[\s*['"]([a-zA-Z_$][a-zA-Z0-9_$]*)['"]\s*\]/g, '.$1');
+    cleaned = cleaned.replace(/([a-zA-Z0-9_$])\s*\[\s*['"]([a-zA-Z_$][a-zA-Z0-9_$]*)['"]\s*\]/g, '$1.$2');
 
     cleaned = cleaned.replace(/\b0x([0-9a-fA-F]+)\b/g, (match, hex) => {
         const decimal = parseInt(hex, 16);
         return decimal < 65535 ? decimal.toString() : match;
     });
 
-    cleaned = cleaned.replace(/\((?:[0-9a-fA-Fx]+|[-+*/\s]|\d+)+\)/g, (match) => {
+    cleaned = cleaned.replace(/\((?:[0-9a-fA-Fx\s]+|[-+*/]|\d+)+\)/g, (match) => {
         try {
             const result = eval(match); 
             return typeof result === 'number' ? result.toString() : match;
