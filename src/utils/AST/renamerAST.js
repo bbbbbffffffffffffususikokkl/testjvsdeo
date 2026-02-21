@@ -1,4 +1,4 @@
-// utils/AST/renamerAST.js
+// src/utils/AST/renamerAST.js
 const KEYWORDS = new Set([
     "var","let","const","function","return","if","else","for","while",
     "switch","case","break","continue","import","from","as","new","try",
@@ -14,16 +14,13 @@ export function renameVariablesAST(code) {
     let funcIndex = 1;
     let varIndex = 1;
 
-    // ===== PASS 1: detect declarations =====
+    /* ========= PASS 1: declarations ========= */
+
     for (let i = 0; i < tokens.length; i++) {
         const t = tokens[i];
 
         // var _0x123 = [...]
-        if (isKeyword(t, ["var","let","const"]) &&
-            isIdentifier(tokens[i+1]) &&
-            tokens[i+2]?.value === "=" &&
-            tokens[i+3]?.value === "["
-        ) {
+        if (isDecl(tokens, i) && tokens[i+3]?.value === "[") {
             const name = tokens[i+1].value;
             if (isObfuscated(name)) {
                 renameMap.set(name, `table${tableIndex++}`);
@@ -39,18 +36,13 @@ export function renameVariablesAST(code) {
         }
 
         // import { world as _0x123 }
-        if (t.value === "as" && isIdentifier(tokens[i+1])) {
-            const local = tokens[i+1].value;
-            const imported = tokens[i-1]?.value;
-            if (imported && isIdentifier(tokens[i-1])) {
-                renameMap.set(local, imported);
-            }
+        if (t.value === "as" && isIdentifier(tokens[i+1]) && isIdentifier(tokens[i-1])) {
+            renameMap.set(tokens[i+1].value, tokens[i-1].value);
         }
 
-        // const _0x123 = event.sender;
-        if (isKeyword(t, ["var","let","const"]) &&
-            isIdentifier(tokens[i+1]) &&
-            tokens[i+2]?.value === "=" &&
+        // const _0x123 = event.sender
+        if (
+            isDecl(tokens, i) &&
             tokens[i+3]?.value === "event" &&
             tokens[i+4]?.value === "." &&
             tokens[i+5]?.value === "sender"
@@ -59,23 +51,23 @@ export function renameVariablesAST(code) {
         }
     }
 
-    // ===== PASS 2: rename identifier usages =====
+    /* ========= PASS 2: rename usages ========= */
+
     for (let i = 0; i < tokens.length; i++) {
         const t = tokens[i];
-
         if (!isIdentifier(t)) continue;
         if (KEYWORDS.has(t.value)) continue;
 
-        // skip property access: obj.property
-        if (tokens[i-1]?.value === "." && tokens[i-2]?.type === "Identifier") continue;
+        // skip property names: obj.property
+        if (tokens[i-1]?.value === ".") continue;
 
         const renamed = renameMap.get(t.value);
         if (renamed) {
             t.value = renamed;
+            t.raw = renamed; // 🔥 CRITICAL FIX
         }
     }
 
-    // rebuild code
     return tokens.map(t => t.raw).join('');
 }
 
@@ -88,14 +80,12 @@ function tokenize(code) {
     while (i < code.length) {
         const c = code[i];
 
-        // whitespace
         if (/\s/.test(c)) {
             tokens.push({ type: "Whitespace", raw: c });
             i++;
             continue;
         }
 
-        // string
         if (c === "'" || c === '"') {
             const q = c;
             let start = i++;
@@ -105,14 +95,10 @@ function tokenize(code) {
                 else i++;
             }
             i++;
-            tokens.push({
-                type: "String",
-                raw: code.slice(start, i)
-            });
+            tokens.push({ type: "String", raw: code.slice(start, i) });
             continue;
         }
 
-        // identifier
         if (/[a-zA-Z_$]/.test(c)) {
             let start = i++;
             while (/[a-zA-Z0-9_$]/.test(code[i])) i++;
@@ -125,7 +111,6 @@ function tokenize(code) {
             continue;
         }
 
-        // punctuator
         tokens.push({
             type: "Punctuator",
             value: c,
@@ -141,8 +126,13 @@ function isIdentifier(t) {
     return t && t.type === "Identifier";
 }
 
-function isKeyword(t, list) {
-    return t && t.type === "Identifier" && list.includes(t.value);
+function isDecl(tokens, i) {
+    return (
+        tokens[i]?.type === "Identifier" &&
+        ["var","let","const"].includes(tokens[i].value) &&
+        isIdentifier(tokens[i+1]) &&
+        tokens[i+2]?.value === "="
+    );
 }
 
 function isObfuscated(name) {
