@@ -2,18 +2,23 @@
 export function removeJunk(code) {
     let cleaned = code;
 
-    cleaned = cleaned.replace(/\((?:0x[0-9a-fA-F]+|[-+*/\s]|\d+)+\)/g, (match) => {
+    cleaned = cleaned.replace(/\[\s*['"]([a-zA-Z_$][a-zA-Z0-9_$]*)['"]\s*\]/g, '.$1');
+
+    cleaned = cleaned.replace(/\b0x([0-9a-fA-F]+)\b/g, (match, hex) => {
+        const decimal = parseInt(hex, 16);
+        return decimal < 65535 ? decimal.toString() : match;
+    });
+
+    cleaned = cleaned.replace(/\((?:[0-9a-fA-Fx]+|[-+*/\s]|\d+)+\)/g, (match) => {
         try {
             const result = eval(match); 
-            return typeof result === 'number' ? `0x${result.toString(16)}` : match;
+            return typeof result === 'number' ? result.toString() : match;
         } catch { return match; }
     });
 
     cleaned = cleaned.replace(/var\s+[a-zA-Z0-9_$]+\s*=\s*function\s*\(\)\s*\{[\s\S]*?\}\(\);/g, "");
     cleaned = cleaned.replace(/while\s*\(!!\[\]\)\s*\{[\s\S]*?\}/g, "");
 
-    const declRegex = /(?:var|let|const|function)\s+([a-zA-Z0-9_$]+)[\s\S]*?;/g;
-    let match;
     let lines = cleaned.split('\n');
     let finalLines = [...lines];
 
@@ -25,8 +30,9 @@ export function removeJunk(code) {
                 const varName = m[1];
                 const escapedName = varName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                 const occurrences = (currentCode.match(new RegExp('\\b' + escapedName + '\\b', 'g')) || []).length;
+                
+                const isProtected = line.includes('export') || ["onRun", "main", "constructor"].includes(varName);
 
-                const isProtected = line.includes('export') || ["onRun", "main"].includes(varName);
                 if (occurrences === 1 && !isProtected) return false; 
             }
             return true;
